@@ -27,6 +27,4 @@ işleyerek finansman tutarı, vade, kâr payı, kampanya koşulları,
 - Web Scraping
 - Artificial Intelligence
 
-## Sunum
-
-[📄 Proje Sunumunu Görüntüle](./KARONEXT2.pdf)
+)

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NLP Bilgi Cikarim Motoru</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f6;min-height:100vh}
+
+.header{background:linear-gradient(135deg,#1a3a5c,#6c3483);color:white;padding:16px 28px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:1.15rem}
+.header p{font-size:.78rem;opacity:.8;margin-top:3px}
+.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 12px;font-size:.72rem}
+
+.container{max-width:1100px;margin:24px auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+.card{background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.card-title{font-size:.95rem;font-weight:700;color:#1a3a5c;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+textarea{width:100%;border:1.5px solid #d0dbe8;border-radius:8px;padding:12px;font-size:.85rem;font-family:'Segoe UI',sans-serif;resize:vertical;min-height:200px;outline:none;line-height:1.6;color:#333}
+textarea:focus{border-color:#6c3483}
+
+.ornekler{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.ornek-btn{background:#f8f0ff;border:1.5px solid #d7bde2;color:#6c3483;border-radius:8px;padding:7px 12px;font-size:.76rem;cursor:pointer;text-align:left;transition:all .2s;line-height:1.4}
+.ornek-btn:hover{background:#6c3483;color:white}
+
+.run-btn{width:100%;background:linear-gradient(135deg,#6c3483,#2471a3);color:white;border:none;border-radius:10px;padding:12px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:12px;transition:opacity .2s}
+.run-btn:hover{opacity:.9}
+.clear-btn{width:100%;background:#eef2f7;color:#555;border:1.5px solid #d0dbe8;border-radius:10px;padding:8px;font-size:.82rem;cursor:pointer;margin-top:8px}
+
+/* Sonuc alani */
+.result-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:.85rem}
+.result-empty .icon{font-size:2.5rem;margin-bottom:10px}
+
+.field-group{margin-bottom:16px}
+.field-group-title{font-size:.72rem;font-weight:700;color:#6c3483;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #f0e6ff}
+
+.field{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5}
+.field:last-child{border-bottom:none}
+.field-key{font-size:.78rem;color:#666;flex:1}
+.field-val{font-size:.82rem;font-weight:700;color:#1a3a5c;text-align:right;flex:1}
+.field-val.null{color:#ccc;font-weight:400;font-style:italic}
+.field-val.found{color:#27ae60}
+.field-val.warn{color:#e67e22}
+
+/* Guven skoru */
+.guven-bar{height:12px;background:#eee;border-radius:10px;margin-top:6px;overflow:hidden}
+.guven-fill{height:100%;border-radius:10px;transition:width .8s}
+.guven-label{display:flex;justify-content:space-between;font-size:.72rem;margin-top:4px}
+
+/* Ontoloji */
+.onto-item{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:.78rem;border-bottom:1px solid #f5f5f5}
+.onto-from{color:#e74c3c;text-decoration:line-through;min-width:120px}
+.onto-arrow{color:#aaa}
+.onto-to{color:#27ae60;font-weight:600}
+.onto-item.match{background:#eafaf1;border-radius:6px;padding:5px 8px;border:none;margin:2px 0}
+
+/* JSON kutusu */
+.json-box{background:#1a1a2e;color:#a8ff78;border-radius:8px;padding:14px;font-size:.72rem;font-family:'Courier New',monospace;overflow-x:auto;white-space:pre;max-height:320px;overflow-y:auto;line-height:1.6}
+.json-key{color:#5dade2}
+.json-str{color:#a8ff78}
+.json-num{color:#f39c12}
+.json-null{color:#e74c3c}
+
+/* Alt alan */
+.full-width{grid-column:1/-1}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.step{text-align:center;padding:14px 10px;background:#f8f9ff;border-radius:10px;border:1.5px solid #e0e7ff}
+.step .num{font-size:1.4rem;font-weight:800;color:#6c3483}
+.step .lbl{font-size:.72rem;color:#888;margin-top:4px}
+.step .desc{font-size:.7rem;color:#aaa;margin-top:3px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>&#x1F9E0; NLP Bilgi Cikarim Motoru</h1>
+    <p>Kampanya metninden yapılandırılmış veri üretir &mdash; ML Classification + Regex + Katılım Bankacılığı Ontolojisi</p>
+  </div>
+  <span class="badge">TEKNOFEST 2026</span>
+</div>
+
+<div class="container">
+
+  <!-- SOL: GİRİŞ -->
+  <div>
+    <div class="card">
+      <div class="card-title">&#x1F4DD; Kampanya Metni Gir</div>
+
+      <div style="font-size:.75rem;color:#888;margin-bottom:8px">Hazır örnekler:</div>
+      <div class="ornekler">
+        <button class="ornek-btn" onclick="ornekYukle(0)">&#x1F3E0; Vakıf Katılım — Konut Finansmanı</button>
+        <button class="ornek-btn" onclick="ornekYukle(1)">&#x1F697; Kuveyt Türk — Taşıt Finansmanı</button>
+        <button class="ornek-btn" onclick="ornekYukle(2)">&#x1F4B3; Ziraat Katılım — Kart Kampanyası</button>
+        <button class="ornek-btn" onclick="ornekYukle(3)">&#x1F4B0; Albaraka — Dolaylı İfade (Oran Yok)</button>
+      </div>
+
+      <textarea id="metin" placeholder="Buraya kampanya metnini yapıştırın veya yukarıdan örnek seçin..."></textarea>
+
+      <button class="run-btn" onclick="calistir()">&#x25B6; NLP Analizi Çalıştır</button>
+      <button class="clear-btn" onclick="temizle()">&#x1F5D1; Temizle</button>
+    </div>
+
+    <!-- Ontoloji -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">&#x1F4DA; Katılım Bankacılığı Ontolojisi</div>
+      <div style="font-size:.75rem;color:#888;margin-bottom:10px">Geleneksel → Katılım terminolojisi dönüşümü</div>
+      <div id="onto-list">
+        <div class="onto-item"><span class="onto-from">faiz oranı</span><span class="onto-arrow">→</span><span class="onto-to">kâr payı oranı</span></div>
+        <div class="onto-item"><span class="onto-from">faiz indirimi</span><span class="onto-arrow">→</span><span class="onto-to">kâr payı avantajı</span></div>
+        <div class="onto-item"><span class="onto-from">kredi</span><span class="onto-arrow">→</span><span class="onto-to">finansman</span></div>
+        <div class="onto-item"><span class="onto-from">konut kredisi</span><span class="onto-arrow">→</span><span class="onto-to">konut finansmanı</span></div>
+        <div class="onto-item"><span class="onto-from">taşıt kredisi</span><span class="onto-arrow">→</span><span class="onto-to">taşıt finansmanı</span></div>
+        <div class="onto-item"><span class="onto-from">ihtiyaç kredisi</span><span class="onto-arrow">→</span><span class="onto-to">ihtiyaç finansmanı</span></div>
+        <div class="onto-item"><span class="onto-from">mevduat</span><span class="onto-arrow">→</span><span class="onto-to">katılma hesabı</span></div>
+        <div class="onto-item"><span class="onto-from">faiz geliri</span><span class="onto-arrow">→</span><span class="onto-to">kâr payı geliri</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAĞ: SONUÇ -->
+  <div>
+    <div class="card">
+      <div class="card-title">&#x1F4CA; Çıkarım Sonuçları</div>
+      <div id="sonuc">
+        <div class="result-empty">
+          <div class="icon">&#x1F9E0;</div>
+          <div>Sol taraftan bir metin girin veya örnek seçin,<br>ardından <b>NLP Analizi Çalıştır</b> butonuna basın.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- JSON çıktı -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">&#x1F4BE; JSON Çıktısı <span style="font-size:.7rem;font-weight:400;color:#888">(Pydantic şeması)</span></div>
+      <div class="json-box" id="json-box">// Analiz bekleniyor...</div>
+    </div>
+  </div>
+
+  <!-- ALT: İSTATİSTİK -->
+  <div class="full-width">
+    <div class="card">
+      <div class="card-title">&#x26A1; Pipeline Adımları</div>
+      <div class="steps">
+        <div class="step"><div class="num" id="st1">-</div><div class="lbl">Toplam Karakter</div><div class="desc">Ham metin uzunluğu</div></div>
+        <div class="step"><div class="num" id="st2">-</div><div class="lbl">Bulunan Oran</div><div class="desc">% ile belirtilen değerler</div></div>
+        <div class="step"><div class="num" id="st3">-</div><div class="lbl">Bulunan Tutar</div><div class="desc">TL ile belirtilen değerler</div></div>
+        <div class="step"><div class="num" id="st4">-</div><div class="lbl">Güven Skoru</div><div class="desc">NLP doğruluk tahmini</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── ÖRNEK METİNLER ────────────────────────────────────────────────────────────
+var ORNEKLER = [
+  // 0: Konut
+  "Vakıf Katılım Bankası Konut Finansmanı\n\nEv sahibi olmak artık çok daha kolay! Vakıf Katılım konut finansmanında aylık %1,85 kâr payı oranıyla hayalinizdeki eve kavuşabilirsiniz.\n\nFinansman Özellikleri:\n- Kâr payı oranı: Aylık %1,85\n- Maksimum finansman tutarı: 8.000.000 TL\n- Minimum finansman tutarı: 50.000 TL\n- Vade seçenekleri: 12 aydan 120 aya kadar\n- Tahsis ücreti alınmaz\n- Ekspertiz ücreti: 2.800 TL\n- Bireysel müşterilere özel\n\nKampanya 31.12.2025 tarihine kadar geçerlidir.\nŞubelerimizden veya internet bankacılığından başvurabilirsiniz.",
+
+  // 1: Taşıt
+  "Kuveyt Türk Taşıt Finansmanı\n\nSıfır ve ikinci el araç alımlarında aylık %2,05 kâr payı oranıyla Kuveyt Türk'ün avantajlı taşıt finansmanından yararlanın!\n\n- Kâr payı oranı: %2,05 aylık\n- Maksimum tutar: 1.500.000 TL\n- Maksimum vade: 60 ay\n- Tahsis ücreti: Alınmaz\n- Sıfır araçlar için geçerlidir\n- Başvuru: Mobil uygulama veya şubelerimiz\n\nKampanya 30.06.2026'ya kadar geçerlidir.",
+
+  // 2: Kart
+  "Ziraat Katılım Goldmaster Kart Kampanyası\n\nZiraat Katılım Goldmaster Kart sahiplerine özel süper kampanya! Market alışverişlerinizde %20 indirim, ilk 3 ay toplam 5.000 TL alışveriş çeki hediye!\n\n- İndirim oranı: %20 (market kategorisi)\n- Ödül miktarı: 5.000 TL alışveriş çeki\n- Kampanya başlangıç: 01.08.2025\n- Kampanya bitiş: 31.10.2025\n- Minimum alışveriş tutarı: 500 TL\n- Geçerli kart: Goldmaster Kart\n- Yeni müşterilere özel",
+
+  // 3: Dolaylı ifade
+  "Albaraka Türk'te avantajlı kâr payı fırsatıyla konut finansmanında size özel oran! Cazip oran ve esnek vade seçenekleriyle ev sahibi olmanın tam zamanı. Özel oranlı finansman fırsatını kaçırmayın. En yakın Albaraka Türk şubesinden detaylı bilgi alabilirsiniz."
+];
+
+function ornekYukle(i){ document.getElementById("metin").value = ORNEKLER[i] }
+function temizle(){
+  document.getElementById("metin").value="";
+  document.getElementById("sonuc").innerHTML='<div class="result-empty"><div class="icon">&#x1F9E0;</div><div>Sol taraftan bir metin girin.</div></div>';
+  document.getElementById("json-box").textContent="// Analiz bekleniyor...";
+  ["st1","st2","st3","st4"].forEach(function(id){document.getElementById(id).textContent="-"});
+}
+
+// ── NLP ENGİNE ────────────────────────────────────────────────────────────────
+function oranBul(t){
+  var r=[]; var re=/%\s*(\d{1,2})[,.](\d{1,4})|(\d{1,2})[,.](\d{1,4})\s*%/g; var m;
+  while((m=re.exec(t))!==null){
+    try{ r.push(parseFloat(m[1]?m[1]+"."+m[2]:m[3]+"."+m[4])) }catch(e){}
+  }
+  return [...new Set(r)].sort(function(a,b){return a-b});
+}
+
+function tutarBul(t){
+  var r=[]; var re=/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:TL|Türk\s+Lirası|₺)/gi; var m;
+  while((m=re.exec(t))!==null){
+    var v=parseInt(m[1].replace(/\./g,""));
+    if(!isNaN(v)) r.push(v);
+  }
+  return [...new Set(r)].sort(function(a,b){return a-b});
+}
+
+function vadeBul(t){
+  var r=[];
+  var m1; var re1=/(\d+)\s*ay\b/gi;
+  while((m1=re1.exec(t))!==null) r.push(parseInt(m1[1]));
+  var m2; var re2=/(\d+)\s*yıl\b/gi;
+  while((m2=re2.exec(t))!==null) r.push(parseInt(m2[1])*12);
+  return [...new Set(r)].sort(function(a,b){return a-b});
+}
+
+function tarihBul(t){
+  var tarihler = [];
+
+  const aylar = {
+    "ocak": "01",
+    "şubat": "02",
+    "subat": "02",
+    "mart": "03",
+    "nisan": "04",
+    "mayıs": "05",
+    "mayis": "05",
+    "haziran": "06",
+    "temmuz": "07",
+    "ağustos": "08",
+    "agustos": "08",
+    "eylül": "09",
+    "eylul": "09",
+    "ekim": "10",
+    "kasım": "11",
+    "kasim": "11",
+    "aralık": "12",
+    "aralik": "12"
+  };
+
+  // 1) 15.04.2026 veya 15/04/2026
+  var numericRegex = /(\d{1,2})[./](\d{1,2})[./](\d{2,4})/g;
+  var m;
+
+  while((m = numericRegex.exec(t)) !== null){
+    var gun = m[1].padStart(2, "0");
+    var ay = m[2].padStart(2, "0");
+    var yil = parseInt(m[3]);
+
+    if(yil < 100) yil += 2000;
+
+    tarihler.push(yil + "-" + ay + "-" + gun);
+  }
+
+  // 2) 15 Nisan 2026, 30 Kasım 2026 vb.
+  var textRegex =
+    /(\d{1,2})\s+(ocak|şubat|subat|mart|nisan|mayıs|mayis|haziran|temmuz|ağustos|agustos|eylül|eylul|ekim|kasım|kasim|aralık|aralik)\s+(\d{4})/gi;
+
+  while((m = textRegex.exec(t)) !== null){
+    var gun = m[1].padStart(2, "0");
+    var ayAdi = m[2].toLowerCase();
+    var ay = aylar[ayAdi];
+    var yil = m[3];
+
+    tarihler.push(yil + "-" + ay + "-" + gun);
+  }
+
+  return [...new Set(tarihler)];
+}
+
+function kategori(t){
+  var tl=t.toLowerCase();
+  if(/konut|ev\s|daire/.test(tl)) return "konut_finansmani";
+  if(/ihtiyaç|ihtiyac|tüketici/.test(tl)) return "ihtiyac_finansmani";
+  if(/taşıt|tasit|araç|araba|otomobil/.test(tl)) return "tasit_finansmani";
+  if(/kredi\s*kart|kart\s*kampanya|goldmaster|bonus kart/.test(tl)) return "kredi_karti";
+  if(/katılma\s*hesab|vadeli\s*hesap/.test(tl)) return "katilma_hesabi";
+  if(/yatırım|sukuk|fon\b/.test(tl)) return "yatirim";
+  return "diger";
+}
+
+function musteriTuru(t){
+  var tl=t.toLowerCase();
+  if(/bireysel|kişisel|tüketici/.test(tl)) return "bireysel";
+  if(/ticari|kurumsal|işletme|kobi/.test(tl)) return "ticari";
+  return "belirsiz";
+}
+
+function musteriSegment(t){
+  var tl=t.toLowerCase();
+  if(/yeni\s*müşteri|ilk\s*kez/.test(tl)) return "yeni";
+  if(/mevcut\s*müşteri/.test(tl)) return "mevcut";
+  if(/öğrenci|üniversite/.test(tl)) return "ogrenci";
+  return "belirsiz";
+}
+
+function kanal(t){
+  var tl=t.toLowerCase();
+  if(/mobil\s*uygulama/.test(tl) && /şube/.test(tl)) return "her_kanal";
+  if(/internet\s*bankac/.test(tl)) return "internet";
+  if(/mobil\s*uygulama/.test(tl)) return "mobil";
+  if(/şube/.test(tl)) return "sube";
+  return "belirsiz";
+}
+
+function ontoloji(t){
+  var eslesmeler=[
+    {eski:/faiz\s+oran[ıi]/gi, yeni:"kâr payı oranı"},
+    {eski:/faiz\s+indirimi/gi, yeni:"kâr payı avantajı"},
+    {eski:/faiz\s+fırsat/gi,   yeni:"kâr payı fırsatı"},
+    {eski:/konut\s+kredisi/gi, yeni:"konut finansmanı"},
+    {eski:/taşıt\s+kredisi/gi, yeni:"taşıt finansmanı"},
+    {eski:/ihtiyaç\s+kredisi/gi, yeni:"ihtiyaç finansmanı"},
+    {eski:/\bkredisi\b/gi,     yeni:"finansmanı"},
+    {eski:/\bkredi\b/gi,       yeni:"finansman"},
+    {eski:/mevduat\b/gi,       yeni:"katılma hesabı"},
+    {eski:/faiz\s+geliri/gi,   yeni:"kâr payı geliri"},
+  ];
+  var bulunanlar=[];
+  eslesmeler.forEach(function(e){
+    if(e.eski.test(t)) bulunanlar.push(e);
+    e.eski.lastIndex=0;
+  });
+  return bulunanlar;
+}
+
+function dolayliIfade(t){
+  var re=/avantajlı\s+kâr\s+payı|özel\s+oran|düşük\s+maliyetli|uygun\s+kâr\s+payı|cazip\s+oran|rekabetçi\s+oran|fırsat\s+oran[ıi]|özel\s+oranlı/i;
+  var m=re.exec(t);
+  return m?m[0]:null;
+}
+
+function masrafKontrol(t){
+  return /tahsis\s+ücreti\s+alınmaz|masraf\s+yok|ücretsiz\s+tahsis/i.test(t);
+}
+
+function odulBul(t){
+  var re=/(\d[\d.,]*)\s*TL\s*(?:nakit\s+ödül|alışveriş\s+çek|hediye|bonus\s+TL)/i;
+  var m=re.exec(t);
+  if(m){ try{ return parseFloat(m[1].replace(/\./g,"").replace(",",".")); }catch(e){} }
+  return null;
+}
+
+function indirimBul(t){
+  var re=/%(\d{1,2})\s*(?:indirim|cashback|iade)/i;
+  var m=re.exec(t);
+  return m?parseFloat(m[1]):null;
+}
+
+function banka(t){
+  var tl=t.toLowerCase();
+  if(/vakıf\s*katılım|vakifkatilim/.test(tl)) return {adi:"Vakıf Katılım Bankası", id:"vakifkatilim"};
+  if(/kuveyt\s*türk|kuveytturk/.test(tl))    return {adi:"Kuveyt Türk Katılım Bankası", id:"kuveytturk"};
+  if(/ziraat\s*katılım|ziraatkatilim/.test(tl)) return {adi:"Ziraat Katılım Bankası", id:"ziraatkatilim"};
+  if(/albaraka/.test(tl)) return {adi:"Albaraka Türk Katılım Bankası", id:"albaraka"};
+  if(/türkiye\s*finans|turkiyefinans/.test(tl)) return {adi:"Türkiye Finans Katılım Bankası", id:"turkiyefinans"};
+  if(/emlak\s*katılım|emlakkatilim/.test(tl)) return {adi:"Emlak Katılım Bankası", id:"emlakkatilim"};
+  return {adi:null, id:null};
+}
+
+// ── ANA FONKSİYON ─────────────────────────────────────────────────────────────
+async function calistir(){
+  var metin=document.getElementById("metin").value.trim();
+  if(!metin){ alert("Lütfen önce bir metin girin."); return; }
+
+  // Gerçek ML sınıflandırma modeli: TF-IDF + Logistic Regression
+  // API kapalıysa mevcut kural tabanlı kategori() fonksiyonuna geri düşer.
+  var ml = null;
+  try {
+    var response = await fetch("http://127.0.0.1:8000/classify", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({metin: metin})
+    });
+    if(response.ok){
+      ml = await response.json();
+    }
+  } catch(err) {
+    console.warn("ML API erişilemedi, rule-based fallback kullanılacak:", err);
+  }
+
+  var oranlar  = oranBul(metin);
+  var tutarlar = tutarBul(metin);
+  var vadeler  = vadeBul(metin);
+  var tarihler = tarihBul(metin);
+  var dolali   = dolayliIfade(metin);
+  var bk       = banka(metin);
+  var onto     = ontoloji(metin);
+  var odul     = odulBul(metin);
+  var indirim  = indirimBul(metin);
+  var masrafYok= masrafKontrol(metin);
+
+  // Regex bilgi çıkarım kalitesi ayrıca tutulur.
+  var extractionGuven = 0;
+  if(oranlar.length)  extractionGuven+=50;
+  if(vadeler.length)  extractionGuven+=25;
+  if(tutarlar.length) extractionGuven+=25;
+
+  // ML modeli açıksa gerçek predict_proba değeri kullanılır.
+  var kategoriSonucu = ml ? ml.kategori : kategori(metin);
+  var modelGuven = ml ? ml.guven : extractionGuven/100;
+  var guven = Math.round(modelGuven * 100);
+
+  var sonuc = {
+    banka_adi:               bk.adi,
+    banka_id:                bk.id,
+    kategori:                kategoriSonucu,
+    musteri_turu:            musteriTuru(metin),
+    musteri_segmenti:        musteriSegment(metin),
+    kar_payi_orani:          oranlar.length ? oranlar[0] : null,
+    kar_payi_orani_aciklama: (!oranlar.length && dolali) ? dolali : null,
+    tum_oranlar_bulundu:     oranlar,
+    min_tutar:               tutarlar.length>=2 ? tutarlar[0] : null,
+    max_tutar:               tutarlar.length>=1 ? tutarlar[tutarlar.length-1] : null,
+    tum_tutarlar_bulundu:    tutarlar,
+    min_vade_ay:             vadeler.length>=2 ? vadeler[0] : null,
+    max_vade_ay:             vadeler.length>=1 ? vadeler[vadeler.length-1] : null,
+    tum_vadeler_ay:          vadeler,
+    tahsis_ucreti:           masrafYok ? 0 : null,
+    odul_miktari:            odul,
+    indirim_orani:           indirim,
+    kampanya_baslangic:      tarihler.length>=1 ? tarihler[0] : null,
+    kampanya_bitis:          tarihler.length>=2 ? tarihler[tarihler.length-1] : (tarihler.length===1 ? tarihler[0] : null),
+    basvuru_kanali:          kanal(metin),
+    model_guven:             modelGuven,
+    regex_extraction_guven:  extractionGuven/100,
+    kategori_skorlari:       ml ? ml.tum_skorlar : [],
+    extraction_method:       ml
+      ? "tfidf_logistic_regression + regex + ontology"
+      : "regex + ontology (ML API fallback)"
+  };
+
+  // ── SONUÇ ALANI ────────────────────────────────────────────────────────────
+  var guvenRenk = guven>=75?"#27ae60":guven>=50?"#f39c12":"#e74c3c";
+
+  var html = "";
+
+  // Güven skoru
+  html += '<div style="margin-bottom:16px">';
+  html += '<div style="display:flex;justify-content:space-between;font-size:.78rem;margin-bottom:5px"><span style="font-weight:700">Model Güven Skoru</span><span style="font-weight:800;color:'+guvenRenk+'">%'+guven+'</span></div>';
+  html += '<div class="guven-bar"><div class="guven-fill" style="width:'+guven+'%;background:'+guvenRenk+'"></div></div>';
+  html += '<div class="guven-label"><span>Düşük</span><span>Yüksek</span></div></div>';
+
+  // Kimlik
+  html += '<div class="field-group"><div class="field-group-title">&#x1F3E6; Kimlik Bilgileri</div>';
+  html += alan("Banka Adı", sonuc.banka_adi);
+  html += alan("Kategori", sonuc.kategori, true);
+  html += alan("Kategori Kaynağı", ml ? "ML — TF-IDF + Logistic Regression" : "Rule-based fallback");
+  html += alan("Müşteri Türü", sonuc.musteri_turu);
+  html += alan("Müşteri Segmenti", sonuc.musteri_segmenti);
+  html += alan("Başvuru Kanalı", sonuc.basvuru_kanali);
+  html += '</div>';
+
+  // Finansal oranlar
+  html += '<div class="field-group"><div class="field-group-title">&#x1F4B9; Finansal Oranlar</div>';
+  html += alan("Kâr Payı Oranı (%)", sonuc.kar_payi_orani, true);
+  html += alan("Dolaylı İfade", sonuc.kar_payi_orani_aciklama);
+  html += alan("Tüm Oranlar Bulundu", sonuc.tum_oranlar_bulundu.length ? sonuc.tum_oranlar_bulundu.map(function(v){return"%"+v}).join(", ") : null);
+  html += alan("İndirim Oranı (%)", sonuc.indirim_orani);
+  html += '</div>';
+
+  // Finansman
+  html += '<div class="field-group"><div class="field-group-title">&#x1F4B0; Finansman Detayları</div>';
+  html += alan("Min Tutar (TL)", sonuc.min_tutar ? fmt(sonuc.min_tutar)+" TL" : null);
+  html += alan("Max Tutar (TL)", sonuc.max_tutar ? fmt(sonuc.max_tutar)+" TL" : null, true);
+  html += alan("Min Vade (Ay)", sonuc.min_vade_ay ? sonuc.min_vade_ay+" ay" : null);
+  html += alan("Max Vade (Ay)", sonuc.max_vade_ay ? sonuc.max_vade_ay+" ay" : null, true);
+  html += alan("Tahsis Ücreti", sonuc.tahsis_ucreti===0 ? "Yok (0 TL)" : null);
+  html += alan("Ödül/Kampanya", sonuc.odul_miktari ? fmt(sonuc.odul_miktari)+" TL" : null);
+  html += '</div>';
+
+  // Tarih
+  html += '<div class="field-group"><div class="field-group-title">&#x1F4C5; Kampanya Tarihleri</div>';
+  html += alan("Başlangıç", sonuc.kampanya_baslangic);
+  html += alan("Bitiş", sonuc.kampanya_bitis);
+  html += '</div>';
+
+  // Ontoloji eşleşmeleri
+  if(onto.length>0){
+    html += '<div class="field-group"><div class="field-group-title">&#x1F4DA; Ontoloji Eşleşmeleri ('+onto.length+' bulundu)</div>';
+    onto.forEach(function(e){
+      html += '<div class="onto-item match"><span class="onto-from">'+e.eski.source.replace(/\\[a-z]+/gi,"").replace(/[\/gi]/g,"").substring(0,20)+'</span><span class="onto-arrow">→</span><span class="onto-to">'+e.yeni+'</span></div>';
+    });
+    html += '</div>';
+  }
+
+  document.getElementById("sonuc").innerHTML = html;
+
+  // ── JSON çıktı ──────────────────────────────────────────────────────────────
+  document.getElementById("json-box").innerHTML = jsonRenkli(sonuc);
+
+  // ── İstatistikler ───────────────────────────────────────────────────────────
+  document.getElementById("st1").textContent = metin.length.toLocaleString("tr-TR");
+  document.getElementById("st2").textContent = oranlar.length;
+  document.getElementById("st3").textContent = tutarlar.length;
+  document.getElementById("st4").textContent = "%"+guven;
+
+  // Ontoloji vurgula
+  document.querySelectorAll(".onto-item:not(.match)").forEach(function(el){
+    el.style.opacity="0.4";
+  });
+  onto.forEach(function(e){
+    document.querySelectorAll(".onto-item:not(.match)").forEach(function(el){
+      var fromEl=el.querySelector(".onto-to");
+      if(fromEl && fromEl.textContent===e.yeni) el.style.opacity="1";
+    });
+  });
+}
+
+function alan(k, v, onemli){
+  var cls = v===null||v===undefined ? "null" : (onemli ? "found" : "");
+  var goster = v===null||v===undefined ? "—" : String(v);
+  return '<div class="field"><span class="field-key">'+k+'</span><span class="field-val '+cls+'">'+goster+'</span></div>';
+}
+
+function fmt(n){ return Math.round(n).toLocaleString("tr-TR") }
+
+function jsonRenkli(obj){
+  var str = JSON.stringify(obj, null, 2);
+  return str
+    .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="json-str">"$1"</span>')
+    .replace(/: (\d+\.?\d*)/g, ': <span class="json-num">$1</span>')
+    .replace(/: null/g, ': <span class="json-null">null</span>');
+}
+</script>
+</body>
+</html>

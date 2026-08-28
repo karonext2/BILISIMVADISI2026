@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Sanal ortam
+.venv/
+venv/
+env/
+
+# Sırlar / yapılandırma
+.env
+.env.local
+*.key
+
+# Veri — türetilen / büyük dosyalar
+data/final/
+data/processed/*.jsonl
+data/processed/chunks/
+data/processed/_backup_*/
+!data/processed/.gitkeep
+
+# Claude Code oturum ayarları
+.claude/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Log
+*.log
